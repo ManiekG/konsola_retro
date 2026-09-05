@@ -13,7 +13,7 @@ Uruchomienie ręczne:
 simcoupe autoboot -disk1 "/home/<user>/samcoupe/disks/dyski_sam/gra.dsk" -fullscreen
 ```
 
-## Atari800 (Atari 8-bit: 400/800/XL/XE) — 🔄 w budowie
+## Atari800 (Atari 8-bit: 400/800/XL/XE) — ✅ skompilowany
 
 Pakiet apt niedostępny w repo Trixie → budowa ze źródeł.
 
