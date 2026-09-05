@@ -106,3 +106,40 @@ Bullseye i nowszych (w tym Trixie) właściwy jest target `default`
 jest tylko dla Stretch/Buster i zależy od wycofanych bibliotek
 Broadcom.
 **Rozwiązanie:** `./configure --target=default`
+
+## 13. `OpenGL context could not be created: EGL_BAD_MATCH` (Atari800)
+**Przyczyna:** Atari800 domyślnie próbuje użyć akceleracji OpenGL
+(`VIDEO_ACCEL=1` w configu), ale GPU vc4 na Pi Zero 2W udostępnia
+tylko OpenGL ES, nie pełny OpenGL — kontekst EGL się nie tworzy.
+Flaga uruchomieniowa `-no-opengl` NIE nadpisuje ustawienia zapisanego
+w `~/.atari800.cfg`.
+**Rozwiązanie:** edytować config bezpośrednio:
+```
+VIDEO_ACCEL=0
+```
+Po zmianie emulator wraca do zwykłego renderowania SDL2 (potwierdzone:
+`Video Mode: 1024x768x32 fullscreen`, bez błędu).
+
+## 14. Puste ścieżki ROM-ów po `atari800 -configure`
+**Przyczyna:** `-configure` tworzy tylko szkielet pliku konfiguracyjnego
+ze wszystkimi kluczami `ROM_*=` pustymi — nie skanuje automatycznie
+systemu w poszukiwaniu plików ROM.
+**Rozwiązanie:** ręcznie wpisać ścieżki do własnych plików ROM oraz
+ustawić odpowiadające pola wersji na `CUSTOM`:
+```
+ROM_XL/XE_CUSTOM=/home/<user>/.atari800/ATARIXL.ROM
+OS_XL/XE_VERSION=CUSTOM
+ROM_BASIC_CUSTOM=/home/<user>/.atari800/ATARIBAS.ROM
+BASIC_VERSION=CUSTOM
+```
+
+## 15. Heredoc bash (`cat > plik << 'EOF' ... EOF`) urywa się w trakcie wklejania przez SSH
+**Przyczyna:** przy wklejaniu długiego wieloliniowego bloku do sesji
+SSH terminal bywa zawodny — połączenie/bufor gubi część linii,
+zamykające słowo heredoc (`EOF`, `SCRIPT`) ląduje jako osobna,
+niepowiązana komenda (`-bash: SCRIPT: command not found`), a plik
+wynikowy jest niekompletny.
+**Rozwiązanie:** używać heredoc Pythona z jawnym `open()/write()`
+zamiast heredoc bashowego — mniej podatny na tego typu rozjazdy przy
+wklejaniu przez SSH. Zawsze weryfikować `cat <plik>` po zapisie, zanim
+plik zostanie użyty (np. `chmod +x` i uruchomienie).

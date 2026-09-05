@@ -47,8 +47,9 @@ ma działać już teraz, zanim (lub obok) powstanie wersja sprzętowa.
 - ✅ SimCoupe (SAM Coupé) — skompilowany, działa, autoboot gier z dysku
 - ✅ Autologin + autostart z konsoli (bez X11)
 - ✅ Klawiatura USB działa (po znalezieniu właściwego portu danych)
-- ✅ Atari800 (Atari 8-bit XE) — skompilowany i zainstalowany ze źródeł
-  (pakiet apt niedostępny w repo Trixie); czeka na ROM-y systemowe
-- 📋 Planowane: proste menu tekstowe wyboru emulatora (SAM / Atari /
-  kolejne), obsługa joysticka/gamepada, docelowo archiwizacja
+- ✅ Atari800 (Atari 8-bit XE) — działa: własne ROM-y, poprawiony
+  config (`VIDEO_ACCEL=0` naprawia błąd OpenGL/EGL na GPU vc4)
+- ✅ Menu tekstowe wyboru emulatora (`~/menu.sh`) wdrożone i działające
+- 📋 Planowane: obsługa joysticka/gamepada, dodanie ZX Spectrum,
+  docelowo archiwizacja
   oryginalnych dyskietek SAM przez Greaseweazle
