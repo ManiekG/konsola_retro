@@ -1,22 +1,34 @@
-# SAM Coupé / Retro Emulation na Raspberry Pi Zero 2W
+# Retro Computing Setup
 
-Dokumentacja budowy dedykowanej maszynki retro na Raspberry Pi Zero 2W —
-bezpośredni boot do SimCoupe (emulator SAM Coupé) z konsoli tekstowej,
-bez X11/desktopu, plus rozbudowa o dodatkowe emulatory (Atari 8-bit i inne).
+Dokumentacja całego systemu retro-emulacji — od researchu sprzętowego,
+przez budowę dedykowanej maszynki na Raspberry Pi Zero 2W, po
+konfigurację poszczególnych emulatorów (SAM Coupé, Atari 8-bit i
+kolejne).
 
-## Sprzęt
+Powiązany projekt: [`ManiekG/sam-coupe`](https://github.com/ManiekG/sam-coupe)
+— osobne repo na sprzętową reimplementację SAM Coupé (FPGA/RTL/PCB).
+To repo dotyczy strony **emulacyjnej/software'owej** — maszynki, która
+ma działać już teraz, zanim (lub obok) powstanie wersja sprzętowa.
 
-- Raspberry Pi Zero 2W (4× Cortex-A53 @1GHz, 512MB RAM, WiFi)
+## Sprzęt — platforma docelowa
+
+- **Raspberry Pi Zero 2W** (4× Cortex-A53 @1GHz, 512MB RAM, WiFi) —
+  główna platforma, wybrana po researchu obejmującym Pico/RP2040,
+  ESP32, Pi Zero v1.3 (bez WiFi) i stary laptop Core2Duo
+  (patrz [`HARDWARE-NOTES.md`](HARDWARE-NOTES.md))
 - Karta SD
 - Monitor HDMI
-- Klawiatura USB (przez hub OTG micro-USB)
-- Opcjonalnie: joystick/gamepad USB do Atari/SAM
+- Klawiatura USB (przez hub OTG micro-USB — **musi być w porcie danych
+  "USB", nie "PWR IN"**, patrz [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md))
+- Opcjonalnie: joystick/gamepad USB
 
 ## System
 
 - Raspberry Pi OS Lite (Trixie / Debian 13), 32-bit
 - Bez środowiska graficznego — emulatory renderują bezpośrednio przez
-  SDL2 + KMS/DRM na konsoli tekstowej (tty1)
+  SDL2 + KMS/DRM na konsoli tekstowej (tty1), autologin + autostart
+  zamiast pełnego frontendu (RetroPie rozważony i odrzucony na rzecz
+  lekkości i szybkiego bootu)
 
 ## Struktura repo
 
@@ -25,15 +37,18 @@ bez X11/desktopu, plus rozbudowa o dodatkowe emulatory (Atari 8-bit i inne).
 - [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) — wszystkie napotkane
   problemy i ich rozwiązania (chronologicznie)
 - [`EMULATORS.md`](EMULATORS.md) — status poszczególnych emulatorów
-  (SimCoupe, Atari800, plany na Spectrum/inne) i menu wyboru
-- [`HARDWARE-NOTES.md`](HARDWARE-NOTES.md) — notatki z researchu
-  sprzętowego (dlaczego Pi Zero 2W, a nie ESP32/Pico/RetroPie)
+  (SimCoupe, Atari800, plany na Spectrum/inne), menu wyboru, joystick
+- [`HARDWARE-NOTES.md`](HARDWARE-NOTES.md) — pełny research sprzętowy:
+  Pico/RP2040, ESP32, warianty Pi Zero, laptop x86, archiwizacja
+  dyskietek (SAMdisk/Greaseweazle)
 
 ## Status na teraz
 
-- ✅ SimCoupe skompilowany i działający, autoboot gier z dysku
+- ✅ SimCoupe (SAM Coupé) — skompilowany, działa, autoboot gier z dysku
 - ✅ Autologin + autostart z konsoli (bez X11)
 - ✅ Klawiatura USB działa (po znalezieniu właściwego portu danych)
-- 🔄 Atari800 — w trakcie kompilacji ze źródeł (pakiet apt niedostępny
-  w repo Trixie)
-- 📋 Planowane: proste menu tekstowe wyboru emulatora, obsługa joysticka
+- 🔄 Atari800 (Atari 8-bit XE) — w trakcie kompilacji ze źródeł (pakiet
+  apt niedostępny w repo Trixie)
+- 📋 Planowane: proste menu tekstowe wyboru emulatora (SAM / Atari /
+  kolejne), obsługa joysticka/gamepada, docelowo archiwizacja
+  oryginalnych dyskietek SAM przez Greaseweazle
