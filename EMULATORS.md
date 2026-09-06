@@ -136,3 +136,67 @@ SimCoupe: konfiguracja joysticka w menu **F10 → Options → Joystick**.
 Atari800: obsługa wbudowana w `.atari800.cfg`
 (`SDL2_JOY_PORT_*` — domyślnie już skonfigurowane pod klawiaturę
 jako joystick 1, sprzętowy pad jeszcze nietestowany).
+
+## Commodore 64 (VICE / x64sc) — ✅ działa
+
+Pakiet `vice` niedostępny w repo Trixie → budowa ze źródeł (mirror
+GitHub, ponieważ oficjalne repo jest na SourceForge SVN):
+
+```bash
+sudo apt install -y libpng-dev libjpeg-dev flac libflac-dev libvorbis-dev \
+    libpcap-dev portaudio19-dev texinfo dos2unix xa65 bison flex \
+    libcurl4-openssl-dev
+git clone --depth 1 https://github.com/VICE-Team/svn-mirror.git vice-source
+cd vice-source/vice
+./autogen.sh
+./configure --enable-sdl2ui --without-oss --disable-catweasel \
+    --disable-parsid --without-libcurl
+make -j1   # NIE -j4 na 512MB RAM — ryzyko OOM i zawieszenia systemu
+```
+
+**Kluczowe pułapki:**
+- Domyślny `configure` wymaga `libcurl` (>= 7.66.0) nawet z
+  zainstalowanym `libcurl4-openssl-dev` — `pkg-config` go nie widział
+  mimo obecności pakietu. Najprostsze obejście: `--without-libcurl`
+  (curl służy tylko do sprawdzania aktualizacji, nie do emulacji).
+- **`make install` nie generuje właściwej reguły** w tym buildzie
+  (`No rule to make target 'install'`) — binarkę trzeba skopiować
+  ręcznie:
+  ```bash
+  sudo cp src/x64sc /usr/local/bin/
+  sudo chmod +x /usr/local/bin/x64sc
+  ```
+- Kompilacja z `-j4` na Pi Zero 2W (512MB RAM) ryzykuje zawieszenie
+  całego systemu (WiFi/SSH przestaje odpowiadać) — używać `-j1`.
+
+Katalog na obrazy dysków: `~/c64/disks/`
+
+## Amstrad CPC 6128 (Caprice32) — ✅ działa
+
+Repo ma folder `build/`, co myląco sugeruje CMake — **to zwykły
+projekt Makefile** (plik `makefile` w katalogu głównym, bez wielkiej
+litery, bez `CMakeLists.txt` nigdzie w drzewie):
+
+```bash
+sudo apt install -y libsdl1.2-dev libfreetype-dev zlib1g-dev libpng-dev
+git clone https://github.com/ColinPitrat/caprice32.git
+cd caprice32
+make WITHOUT_GL=TRUE
+sudo cp cap32 /usr/local/bin/
+sudo chmod +x /usr/local/bin/cap32
+```
+
+`WITHOUT_GL=TRUE` jest ważne — domyślnie próbuje użyć pełnego OpenGL,
+którego GPU vc4 (Pi Zero 2W) nie ma (tylko OpenGL ES).
+
+**Uwaga o segfaultach kompilatora:** podczas pierwszego podejścia (na
+karcie SD, która później okazała się uszkodzona) kompilacja wielokrotnie
+kończyła się `internal compiler error: Segmentation fault` dokładnie
+w tym samym miejscu (`src/fdc.cpp`), mimo reinstalacji GCC i zmiany
+flag optymalizacji. Na zdrowej karcie SD build przechodzi bez
+problemu — jeśli GCC segfaultuje deterministycznie w tym samym miejscu
+kompilacji, to przede wszystkim podejrzewać kartę SD/pamięć, nie kod
+(patrz `TROUBLESHOOTING.md`).
+
+ROM-y CPC 6128 (własne, nie dołączone): `~/.capriceConfig/`
+Katalog na obrazy dysków: `~/cpc/disks/`

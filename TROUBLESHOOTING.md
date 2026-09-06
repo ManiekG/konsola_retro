@@ -143,3 +143,127 @@ wynikowy jest niekompletny.
 zamiast heredoc bashowego — mniej podatny na tego typu rozjazdy przy
 wklejaniu przez SSH. Zawsze weryfikować `cat <plik>` po zapisie, zanim
 plik zostanie użyty (np. `chmod +x` i uruchomienie).
+
+## 16. Epopeja uszkodzonej karty SD — objawy, diagnoza, decyzja
+
+Po kilku godzinach intensywnych kompilacji (SimCoupe, Atari800, VICE)
+Pi przestało wstawać rano ("Pi nie wstaje", dioda zielona miga krótko
+i zostaje zapalona na stałe, zero obrazu na HDMI).
+
+**Diagnoza krok po kroku:**
+1. Sprawdzenie diod PWR/ACT — zasilanie OK, karta czytana ale system
+   nie startuje w pełni.
+2. Wyjęcie karty, montaż na Macu przez czytnik USB — partycja `bootfs`
+   (FAT32) okazała się w pełni sprawna, wszystkie pliki rozruchowe
+   (`bootcode.bin`, `start.elf`, `kernel.img`, `.dtb`) obecne i
+   niezerowe.
+3. `config.txt` i `cmdline.txt` sprawdzone ręcznie — poprawne,
+   `PARTUUID` w `cmdline.txt` zgodny z prawdziwą sygnaturą dysku MBR
+   (zweryfikowane przez odczyt bajtów offsetu 440 sektora MBR: `sudo dd
+   if=/dev/rdiskN bs=512 count=1 | xxd -s 440 -l 4`).
+4. Naprawa systemu plików ext4 z Maca przez Homebrew:
+   ```bash
+   brew install e2fsprogs
+   diskutil unmountDisk /dev/diskN
+   sudo /usr/local/opt/e2fsprogs/sbin/fsck.ext4 -f -y /dev/rdiskNs2
+   ```
+   Znaleziono i naprawiono osierocone i-węzły oraz uszkodzone ekstenty
+   (głównie w plikach `linux-headers-.../include/config/`). Końcowy
+   błąd `Invalid argument` przy zapisie informacji o systemie plików
+   to najpewniej ograniczenie czytnika USB na macOS przy zapisie
+   surowych metadanych — nieszkodliwe, drugi przebieg `fsck` pokazywał
+   już tylko kosmetyczne niezgodności liczników.
+5. Mimo naprawy struktury systemu plików, Pi **nadal się nie
+   uruchamiało** i nie odpowiadało na ping — potwierdzenie, że problem
+   był głębszy niż sama struktura ext4.
+6. Zdecydowano się na **pełny reflash na nowej karcie** zamiast
+   dalszego dochodzenia — zabezpieczono wcześniej to, co miało
+   realną wartość czasową (skompilowana binarka `x64sc`, ROM-y).
+
+**Powtórka na "nowej" karcie tego samego dnia:** po kilku godzinach
+dalszych kompilacji (VICE ponownie, Caprice32) ta sama karta zaczęła
+wykazywać identyczne objawy: uszkodzona baza `dpkg` (`/var/lib/dpkg/status`
+— naprawiona z automatycznego backupu w `/var/backups/dpkg.status.0`),
+uszkodzony plik `.pyc` (`apt-listchanges`), i **deterministyczny**
+`internal compiler error: Segmentation fault` w GCC zawsze w tym samym
+miejscu (`src/fdc.cpp` przy kompilacji Caprice32) — powtórzony
+identycznie po reinstalacji GCC i zmianie flag optymalizacji na
+`DEBUG=TRUE`.
+
+**Rozstrzygający dowód:** `dmesg | grep -iE "error|ext4"` pokazał
+świeże, generowane w czasie rzeczywistym błędy:
+```
+EXT4-fs error (device mmcblk0p2): ext4_lookup:1787: inode #16704: comm mandb: iget: checksum invalid
+```
+To jądro aktywnie zgłaszające uszkodzenie w locie, nie coś
+historycznego z przeszłości — przy zdrowym RAM (`free -h` czysty) to
+jednoznacznie wskazuje na **fizyczne uszkodzenie karty SD** (złe
+sektory/degradacja flash), którego `fsck` nie jest w stanie trwale
+naprawić (naprawia tylko strukturę metadanych, nie zawartość ani
+fizyczny nośnik).
+
+**Decyzja: wymiana karty, bez dalszego ratowania.** Nawet karty znanych
+marek (SanDisk/Samsung) mogą być podróbkami albo mieć wadę fabryczną —
+test weryfikujący prawdziwą pojemność/kondycję: `brew install f3`,
+`f3write`/`f3read` na całej pojemności karty.
+
+**Pełny obraz karty przed wymianą** (zabezpieczenie danych do
+ewentualnego późniejszego odzyskania), skompresowany w locie na
+udział sieciowy, z paskiem postępu:
+```bash
+brew install pv
+sudo dd if=/dev/rdiskN bs=4m | pv -s <ROZMIAR_W_BAJTACH> | gzip > "/sciezka/backup_$(date +%Y%m%d).img.gz"
+```
+Odtworzenie: `gzip -dc backup.img.gz | sudo dd of=/dev/rdiskN bs=4m`
+
+**Wniosek do `install_retro.sh`:** dodano wbudowany test
+zapisu/odczytu 200MB + sprawdzenie `dmesg` na samym początku skryptu,
+żeby złapać umierającą kartę od razu, zamiast po wielu godzinach
+kompilowania.
+
+## 17. Utrata łączności WiFi podczas długiej kompilacji
+
+**Objaw:** po zakończeniu (lub w trakcie) długiej kompilacji (`make -j4`
+na 512MB RAM) SSH przestawał odpowiadać (`Operation timed out`),
+`ping` też nie dostawał odpowiedzi ("Host is down" / "Destination
+Host Unreachable"), mimo że lokalnie na konsoli Pi (klawiatura+monitor
+podłączone bezpośrednio) system działał normalnie, `sshd` był
+`active (running)` bez przerwy, i `uptime` pokazywał ciągłą pracę
+(zero restartów).
+
+**Diagnoza:** to nie był crash systemu ani awaria SSH — to **karta
+WiFi utraciła łączność radiową z routerem** pod wpływem wysokiego
+obciążenia CPU podczas kompilacji (`load average` >2.0 na 4-rdzeniowym
+Pi Zero 2W). Potwierdzone przez `arp -a` na Macu pokazujące wpis
+"(incomplete)" dla IP Pi — czyli żadnej odpowiedzi na poziomie ARP,
+mimo że interfejs `wlan0` na samym Pi pokazywał `state UP` i miał
+przypisany prawidłowy adres IP.
+
+**Rozwiązanie:** zwykły `sudo reboot` z lokalnej konsoli (klawiatura
+podłączona bezpośrednio do Pi) przywracał łączność. Podczas długich
+kompilacji, jeśli utrata SSH nie jest krytyczna, prościej jest po
+prostu kontynuować pracę lokalnie na konsoli niż walczyć z
+`wpa_supplicant`/`dhclient` (które na systemie z NetworkManagerem
+mogą się wzajemnie blokować i wisieć bez odpowiedzi).
+
+**Dostęp z Windows** (gdy trzeba się przełączyć z Maca): wbudowany
+klient `ssh`/`scp` w PowerShell działa identycznie jak na macOS/Linux,
+alternatywnie PuTTY + WinSCP graficznie.
+
+## 18. Wklejanie wieloliniowych bloków przez PuTTY/inne terminale
+
+**Objaw:** wklejenie wieloliniowego heredoc (`python3 - <<'EOF' ...`)
+do sesji SSH przez PuTTY (lub podobny klient) urywa się w połowie,
+zostawiając widoczną sekwencję `^[[200~` (kod "bracketed paste") jako
+nierozpoznaną komendę, i/lub aplikuje tę samą zmianę wielokrotnie przy
+kolejnych próbach (duplikaty linii w plikach wynikowych).
+
+**Rozwiązanie:** unikać wieloliniowych heredoców w takich terminalach.
+Zamiast tego zakodować całą zawartość pliku do **Base64** (przygotowane
+z góry) i przesłać jako pojedynczą linię:
+```bash
+echo "<base64...>" | base64 -d > plik
+```
+Baza64 nie zawiera znaków specjalnych ani nowych linii w samym
+przesyłanym tekście, więc jest odporna na problemy z wklejaniem,
+niezależnie od klienta terminala.
