@@ -52,16 +52,20 @@ ma działać już teraz, zanim (lub obok) powstanie wersja sprzętowa.
 - ✅ **Atari 800XL** (Atari800) — własne ROM-y, `VIDEO_ACCEL=0` dla
   poprawnego działania na GPU vc4
 - ✅ **ZX Spectrum** (fuse-sdl + spectrum-roms z apt)
-- ✅ **Atari 1040ST** (Hatari)
+- ✅ **Atari 1040ST** (Hatari) — TOS 2.06 (256KB, plik `.img` nie
+  `.st` — uwaga na dyskietki mylnie nazwane jako ROM), config zapisany
+  trwale przez `--saveconfig`
 - ✅ **MSX** (openMSX, z apt — uniknięto wielogodzinnej kompilacji ze
   źródeł na słabym CPU)
-- ✅ **Amiga 500** (fs-uae, z apt) — wymaga własnego Kickstart ROM
+- ✅ **Amiga 500** (fs-uae, z apt) — Kickstart 1.3 (256KB) + Workbench 1.3
+  skonfigurowane, ładuje się automatycznie z menu
 - ✅ **Commodore 64** (VICE/x64sc) — kompilacja ze źródeł, wymaga flagi
   `--without-libcurl` w configure i ręcznego kopiowania binarki
   (`make install` nie generuje właściwej reguły w tym buildzie)
 - ✅ **Amstrad CPC 6128** (Caprice32) — kompilacja ze źródeł zwykłym
   `make` (NIE CMake — mylące, bo repo ma folder `build/` ale bez
-  CMakeLists.txt), wymaga `libsdl1.2-dev`
+  CMakeLists.txt), wymaga `libsdl1.2-dev`; ROM = OS+BASIC 1985
+  połączone w jeden plik 32KB w `~/rom/cpc6128.rom`
 
 Menu wyboru (`~/menu.sh`, wywoływane z `~/.profile` na tty1) pokazuje
 wszystkie 8 opcji + wyjście do powłoki.

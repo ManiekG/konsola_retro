@@ -200,3 +200,60 @@ kompilacji, to przede wszystkim podejrzewać kartę SD/pamięć, nie kod
 
 ROM-y CPC 6128 (własne, nie dołączone): `~/.capriceConfig/`
 Katalog na obrazy dysków: `~/cpc/disks/`
+
+## Rozpoznawanie prawidłowych plików ROM (ważna lekcja)
+
+Podczas konfiguracji ROM-ów dla Atari ST i Amigi kilkukrotnie trafiono
+na pliki błędnie nazwane jako "TOS"/"Kickstart", które w
+rzeczywistości były **obrazami dyskietek** (`.st`/`.adf`, ~360-900KB),
+nie surowymi ROM-ami. Prawdziwe ROM-y mają ściśle określone, stałe
+rozmiary:
+
+| Platforma | Plik | Prawidłowy rozmiar |
+|---|---|---|
+| Atari ST TOS 1.00/1.02/1.04 | `.img` | 196608 B (192KB) |
+| Atari ST TOS 1.62/2.05/2.06 | `.img` | 262144 B (256KB) |
+| Atari ST TOS 3.x/4.x | `.img` | 524288 B (512KB) |
+| Amiga Kickstart 1.2/1.3 | `.rom` | 262144 B (256KB) |
+| Amiga Kickstart 2.0+/3.x | `.rom` | 524288 B (512KB) |
+
+Jeśli plik ma inny rozmiar niż powyższe (np. 368640 B dla "TOS" albo
+901120 B dla "Kickstart-Disk"), to nie jest surowy ROM — to dyskietka
+startowa, niekompatybilna z tym co emulator (Hatari/fs-uae) oczekuje
+jako plik ROM-u.
+
+## Amstrad CPC 6128 — łączenie OS + BASIC w jeden plik
+
+Caprice32 oczekuje **jednego pliku 32KB** zawierającego OS (16KB) i
+BASIC (16KB) połączone razem, wczytywanego jednym `fread(pbROM,
+2*16384, 1, ...)` — samo OS (16KB) nie wystarczy, mimo że plik
+"OS.ROM" wygląda na kompletny.
+
+```bash
+cat cpc6128_os.rom cpc6128_basic.rom > cpc6128_combined.rom
+mv cpc6128_combined.rom ~/rom/cpc6128.rom
+```
+
+**Kolejność ma znaczenie: najpierw OS, potem BASIC.** Dopasuj rewizję
+BASIC-a do rewizji OS (np. oba z 1985, nie mieszać z wersją "Plus"
+464+/6128+ z 1991 — mimo że też ma 16KB, to inna platforma sprzętowa).
+
+Domyślna ścieżka szukania ROM-ów przez `cap32` (gdy nie ma jeszcze
+configu) to `~/rom/`, NIE `~/.capriceConfig/` (mimo że to nazwa, którą
+sugerował skrypt instalacyjny) — plik systemowy musi nazywać się
+dokładnie `cpc6128.rom` w tym katalogu.
+
+## Amiga 500 — finalna konfiguracja
+
+```bash
+mkdir -p ~/.config/fs-uae/kickstarts
+cp kick13.rom ~/.config/fs-uae/kickstarts/kick13.rom
+mkdir -p ~/amiga/disks
+cp workbench.adf ~/amiga/disks/workbench.adf
+fs-uae --floppy-drive-0="/home/maniek/amiga/disks/workbench.adf"
+```
+
+`--save-options` nie zapisało trwale ścieżki do dyskietki w testowanej
+wersji (3.1.66 ARM) — zamiast szukać właściwego mechanizmu
+konfiguracji fs-uae, flaga `--floppy-drive-0` została wpisana na stałe
+bezpośrednio do `menu.sh`.
