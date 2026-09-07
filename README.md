@@ -2,7 +2,7 @@
 
 Dokumentacja całego systemu retro-emulacji — od researchu sprzętowego,
 przez budowę dedykowanej maszynki na Raspberry Pi Zero 2W, po
-konfigurację 8 emulatorów retro-platform.
+konfigurację 11 emulatorów retro-platform z bibliotekami gier.
 
 Powiązany projekt: [`ManiekG/sam-coupe`](https://github.com/ManiekG/sam-coupe)
 — osobne repo na sprzętową reimplementację SAM Coupé (FPGA/RTL/PCB).
@@ -46,45 +46,56 @@ ma działać już teraz, zanim (lub obok) powstanie wersja sprzętowa.
   instalujący wszystkie 8 emulatorów od zera na świeżo zaflashowanej
   karcie
 
-## Status na teraz — 8/8 platform działa ✅
+## Status na teraz — 11 platform w pelni dzialajacych
 
-- ✅ **SAM Coupé** (SimCoupe) — autoboot gier z dysku
-- ✅ **Atari 800XL** (Atari800) — własne ROM-y, `VIDEO_ACCEL=0` dla
-  poprawnego działania na GPU vc4
-- ✅ **ZX Spectrum** (fuse-sdl + spectrum-roms z apt)
-- ✅ **Atari 1040ST** (Hatari) — TOS 2.06 (256KB, plik `.img` nie
-  `.st` — uwaga na dyskietki mylnie nazwane jako ROM), config zapisany
-  trwale przez `--saveconfig`
-- ✅ **MSX** (openMSX, z apt — uniknięto wielogodzinnej kompilacji ze
-  źródeł na słabym CPU)
-- ✅ **Amiga 500** (fs-uae, z apt) — Kickstart 1.3 (256KB) + Workbench 1.3
-  skonfigurowane, ładuje się automatycznie z menu
-- ✅ **Commodore 64** (VICE/x64sc) — kompilacja ze źródeł, wymaga flagi
-  `--without-libcurl` w configure i ręcznego kopiowania binarki
-  (`make install` nie generuje właściwej reguły w tym buildzie)
-- ✅ **Amstrad CPC 6128** (Caprice32) — kompilacja ze źródeł zwykłym
-  `make` (NIE CMake — mylące, bo repo ma folder `build/` ale bez
-  CMakeLists.txt), wymaga `libsdl1.2-dev`; ROM = OS+BASIC 1985
-  połączone w jeden plik 32KB w `~/rom/cpc6128.rom`
+- ✅ **SAM Coupé** (SimCoupe) — 1314 gier
+- ✅ **Atari 800XL** (Atari800) — 5647 gier
+- ✅ **Sinclair — ZX Spectrum 48K/+3** (fuse-sdl, submenu) — 17867 plikow (DSK/TAP/TZX)
+- ✅ **Atari 1040ST** (Hatari) — ~173 gry
+- ✅ **MSX** (openMSX)
+- ✅ **Amiga 500** (fs-uae) — 15804 gry (z 26373 w pelnej kolekcji TOSEC — reszta wymaga wiekszej karty)
+- ✅ **Commodore — C64/C128/VIC-20/Plus4-C16** (VICE, submenu):
+  C64 8323 gier, C128 64 pliki, VIC-20 3503 gry, Plus4/C16 2623 gry
+- ✅ **Amstrad CPC 6128** (Caprice32) — 5745 gier + 40 kompilacji dwustronnych
+- ✅ **Apple II** (LinApple) — 1094 gry
 
-Menu wyboru (`~/menu.sh`, wywoływane z `~/.profile` na tty1) pokazuje
-wszystkie 8 opcji + wyjście do powłoki.
+**Zmagazynowane, czekaja na emulator (Fuse nie wspiera tych platform):**
+- 📦 **ZX81** — 1171 gier w `~/zx81/disks/`
+- 📦 **ZX80** — 70 plikow w `~/zx80/disks/`
+- Kandydat na emulator: **ZEsarUX** (obsluguje ZX80/ZX81/Spectrum w jednym, SDL, bez X11)
 
-## Ważna lekcja: karty SD i weryfikacja zdrowia
+**Menu:** przebudowane na graficzne (`whiptail`) z zagniezdzonymi podmenu
+(Commodore, Sinclair) zamiast plaskiej listy 11 pozycji. Gotowe skrypty
+w [`scripts/`](scripts/).
 
-W trakcie budowy tego setupu jedna karta SD uległa **stopniowej
-degradacji** w ciągu jednego dnia — zaczęło się od zwykłego "Pi nie
-wstaje", a skończyło na deterministycznym `internal compiler error:
-segmentation fault` w GCC i błędach `EXT4-fs error... checksum
-invalid` zgłaszanych przez jądro w czasie rzeczywistym. `fsck` naprawia
-tylko **strukturę** systemu plików, nie gwarantuje integralności
-**zawartości** plików ani nie naprawia fizycznie uszkodzonych sektorów
-flash. Szczegóły w [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md).
+**Lacznie: ~62 000 plikow gier** na 11 dzialajacych platformach.
 
-**Wniosek na przyszłość:** `install_retro.sh` zawiera teraz wbudowany
-test zapisu/odczytu 200MB + sprawdzenie `dmesg` na samym początku,
-żeby złapać umierającą kartę w pierwszej minucie, nie po czterech
-godzinach kompilowania.
+## Znane problemy sprzetowe/systemowe rozwiazane po drodze
+
+- **Overscan na HDMI** (lewa krawedz obrazu ucieta) — naprawione przez
+  parametr `video=HDMI-A-1:1920x1080M@60,margin_left=40,...` w
+  `/boot/firmware/cmdline.txt`. Stare `overscan_left/right/top/bottom`
+  w `config.txt` NIE dzialaja w pelnym KMS (`disable_fw_kms_setup=1`).
+- **Karta SD zbyt mala na pelne kolekcje** — 29GB karta osiagnela 82%
+  zapelnienia po dodaniu wszystkich bibliotek; pelna kolekcja Amigi
+  (23.8GB samodzielnie) musiala zostac przycieta do 60%. Wiekszy
+  card = 64GB+ zalecany przy dalszej rozbudowie.
+- **Zawieszony `dpkg` przetrwal `kill -9`** podczas instalacji
+  ImageMagick (zaleznosc LinApple) — naprawione czystym `sudo reboot`
+  + `sudo dpkg --configure -a`. `dmesg` byl czysty (nie byl to
+  nawrot uszkodzenia karty).
+
+## Backup karty SD
+
+Pelny, zweryfikowany obraz karty (29GB → 12.3GB skompresowany) zrobiony
+przez `dd | pv | gzip` z Maca na udzial Samby:
+```bash
+sudo dd if=/dev/rdiskN bs=4m | pv -s <ROZMIAR_BAJTY> | gzip > backup.img.gz
+```
+Odtworzenie:
+```bash
+gzip -dc backup.img.gz | sudo dd of=/dev/rdiskN bs=4m
+```
 
 ## Planowane
 
