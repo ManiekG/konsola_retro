@@ -257,3 +257,80 @@ fs-uae --floppy-drive-0="/home/maniek/amiga/disks/workbench.adf"
 wersji (3.1.66 ARM) — zamiast szukać właściwego mechanizmu
 konfiguracji fs-uae, flaga `--floppy-drive-0` została wpisana na stałe
 bezpośrednio do `menu.sh`.
+
+## Apple II (LinApple) — ✅ działa
+
+Aktywnie rozwijany fork, wspiera SDL3 + KMSDRM (bez X11):
+
+```bash
+sudo apt install -y libsdl3-dev libcurl4-openssl-dev libzip-dev \
+    libsdl3-image-dev imagemagick cmake
+git clone https://github.com/linappleii/linapple.git
+cd linapple
+cmake -B build -DBUILD_TESTING=OFF
+cmake --build build -j2   # NIE -j4, patrz TROUBLESHOOTING.md #16
+sudo cp build/linapple /usr/local/bin/
+sudo chmod +x /usr/local/bin/linapple
+```
+
+**Zależności odkrywane iteracyjnie** (każda kolejna `cmake -B build`
+odkrywała następny brak): `libcurl` → `libzip` → `libsdl3-image-dev`
+→`imagemagick` (do konwersji zasobów przy budowaniu — sam pakiet jest
+ciężki, dużo zależności czcionek, instalacja może się wydawać
+zawieszona przez kilka minut, patrz TROUBLESHOOTING.md #19).
+
+Katalog na obrazy dysków: `~/apple2/disks/` — 1094 gry (TOSEC),
+posortowane A-Z.
+
+## Struktura bibliotek gier — jak dodawać nowe kolekcje
+
+Wzorcowy przepływ dla dużej kolekcji TOSEC/DK-BIT (ZIP/TAR/7z z
+Windows):
+
+```bash
+# 1. Transfer (Windows PowerShell)
+scp "kolekcja.zip" maniek@<IP>:~/nazwa_kolekcji.zip
+
+# 2. Rozpakowanie
+mkdir -p ~/<platforma>/disks
+cd ~/<platforma>/disks
+unzip ~/nazwa_kolekcji.zip   # lub: tar -xvf / 7z x
+
+# 3. Sprawdzenie czy sa zagniezdzone ZIP-y (typowe dla TOSEC)
+find ~/<platforma>/disks -iname "*.zip" | wc -l
+```
+
+Jeśli >0 zagnieżdżonych ZIP-ów, użyj [`scripts/unzip_all.sh`](scripts/unzip_all.sh)
+(rozpakowuje wszystkie na raz, usuwa ZIP-y i puste foldery), potem:
+
+```bash
+bash ~/sort_games.sh        # dla plaskiej struktury plikow
+# LUB
+bash ~/sort_games_dirs.sh   # dla struktury folder-na-gre (np. ZX81, Atari XE)
+```
+
+**Zawsze porównaj sumę SHA256** przy dużych transferach (>1GB) —
+`scp` może zgłosić sukces mimo urwanego pliku:
+```bash
+# Windows: Get-FileHash "plik" -Algorithm SHA256
+# Pi:      sha256sum plik
+```
+
+**Po zakończeniu, posprzątaj archiwa źródłowe** (zawartość już
+bezpiecznie rozpakowana):
+```bash
+rm -f ~/*.zip ~/*.tar ~/*.7z
+```
+
+## Zmagazynowane, bez emulatora: ZX80 / ZX81
+
+Fuse (używany dla Spectrum) **nie obsługuje** ZX80/ZX81 — to inna
+architektura sprzętowa. Kolekcje przesłane i posortowane, czekają na
+instalację emulatora:
+
+- `~/zx81/disks/` — 1171 gier (struktura folder-na-gre, TOSEC)
+- `~/zx80/disks/` — 70 plików (mała kolekcja, nieposortowana celowo)
+
+**Kandydat: ZEsarUX** — obsługuje ZX80, ZX81 i Spectrum w jednym,
+SDL-owy (pasuje do architektury bez X11). Instalacja nie została
+jeszcze przeprowadzona.

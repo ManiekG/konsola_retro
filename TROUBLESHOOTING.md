@@ -267,3 +267,90 @@ echo "<base64...>" | base64 -d > plik
 Baza64 nie zawiera znaków specjalnych ani nowych linii w samym
 przesyłanym tekście, więc jest odporna na problemy z wklejaniem,
 niezależnie od klienta terminala.
+
+## 19. Zawieszony `dpkg`, przetrwał `kill -9`
+
+**Objaw:** instalacja `imagemagick` (zależność LinApple) utknęła
+na pakiecie `netpbm` na ponad 9 minut bez żadnego postępu w
+`/var/log/dpkg.log`, mimo że proces pokazywał stan `R (running)` i
+aktywnie zużywał CPU. **`sudo kill -9 <PID>` nie zabił procesu** —
+nadal widoczny w `ps aux` z rosnącym czasem CPU po komendzie kill.
+
+**Diagnoza:** sprawdzono `dmesg | grep -iE "error|ext4"` — czysty,
+co wykluczyło nawrót porannego uszkodzenia karty SD. `cat
+/proc/<PID>/status | grep State` pokazywał `R`, nie `D`
+(nieprzerywalny sen na I/O), ale rzeczywiste zachowanie sugerowało
+bardzo szybkie przełączanie między stanami, którego `ps` nie łapał.
+
+**Rozwiązanie:** zamiast dalej próbować zabić proces, wykonano
+**czysty restart**:
+```bash
+sudo reboot
+```
+Po restarcie:
+```bash
+sudo dpkg --configure -a
+```
+Instalacja dokończyła się bezbłędnie za pierwszym razem po restarcie
+— cała reszta pakietów `imagemagick` (fonty, ghostscript, itd.)
+przeszła płynnie.
+
+**Wniosek:** przy zawieszonym `dpkg`, który nie reaguje na `kill -9`,
+sprawdź `dmesg` żeby wykluczyć uszkodzenie karty, potem po prostu
+zrób czysty `sudo reboot` (bezpieczniejszy niż odcięcie zasilania) i
+`sudo dpkg --configure -a` — to zwykle naprawia stan bez potrzeby
+głębszej diagnostyki.
+
+## 20. Overscan HDMI w pełnym trybie KMS
+
+**Objaw:** lewa krawędź obrazu (menu, tekst) ucięta przez ekran —
+na przenośnym monitorze bez własnej opcji "Just Scan"/wyłączenia
+overscanu.
+
+**Ważne:** standardowe parametry `overscan_left/right/top/bottom` w
+`/boot/firmware/config.txt` **nie działają** w pełnym trybie KMS
+(`dtoverlay=vc4-kms-v3d` + `disable_fw_kms_setup=1`) — te ustawienia
+dotyczą tylko starszego, firmware'owego trybu inicjalizacji wideo.
+
+**Rozwiązanie:** parametr `video=` dopisany do
+`/boot/firmware/cmdline.txt` (musi zostać jedną linią — bez łamania
+przez edytor):
+```bash
+sudo python3 -c "
+path = '/boot/firmware/cmdline.txt'
+with open(path) as f:
+    content = f.read().strip()
+video_param = 'video=HDMI-A-1:1920x1080M@60,margin_left=40,margin_right=0,margin_top=0,margin_bottom=0'
+content = content + ' ' + video_param
+with open(path, 'w') as f:
+    f.write(content)
+"
+sudo reboot
+```
+Dostosuj wartość `margin_left` metodą prób i błędów (zacząć od 40,
+zwiększać jeśli nadal ucina). Nazwa złącza to standardowo `HDMI-A-1`
+na Pi Zero 2W (jedno wyjście HDMI) — można zweryfikować przez
+`sudo modetest -M vc4 -c` jeśli pakiet `libdrm-tests` jest
+zainstalowany.
+
+## 21. Karta SD zbyt mała na pełne kolekcje TOSEC
+
+**Objaw:** `7z x` na kolekcji Amiga (3.6GB skompresowane, 23.8GB po
+rozpakowaniu) urwał się w połowie z `System ERROR: errno=28 : No
+space left on device`, mimo świeżo wymienionej, "nowej" karty 29GB.
+
+**Analiza:** suma wszystkich bibliotek gier (11 platform, TOSEC/DK-BIT)
+znacznie przekracza pojemność standardowej karty 32GB — sama Amiga
+(surowe obrazy `.adf`, słabo kompresowalne) to prawie tyle, co reszta
+platform razem wzięta.
+
+**Rozwiązanie zastosowane:** sprawdzono integralność częściowo
+rozpakowanych plików (`find -size -880k` na `.adf`, tylko 31 z 15835
+było uszkodzonych — 99.8% sprawnych), usunięto uszkodzone, zostawiono
+**60% kolekcji Amigi** (15804 z 26373 gier) jako wystarczające,
+zamiast ryzykować dalsze problemy z miejscem.
+
+**Wniosek na przyszłość:** przy planowaniu pełnych kolekcji TOSEC dla
+wielu platform naraz, **64GB+ karta** jest praktycznie konieczna.
+Alternatywa: trzymać największe biblioteki (Amiga, Spectrum) na
+Sambie i montować przez sieć zamiast lokalnie na karcie SD.
