@@ -9,6 +9,41 @@ Powiązany projekt: [`ManiekG/sam-coupe`](https://github.com/ManiekG/sam-coupe)
 To repo dotyczy strony **emulacyjnej/software'owej** — maszynki, która
 ma działać już teraz, zanim (lub obok) powstanie wersja sprzętowa.
 
+## Quick Start
+
+Najkrótsza ścieżka do działającej konsoli to świeże Raspberry Pi Zero 2W,
+Raspberry Pi OS Lite (32-bit) i skrypt instalacyjny z tego repozytorium.
+
+1. W Raspberry Pi Imager wgraj **Raspberry Pi OS Lite (32-bit)** na kartę
+   SD. Przed flashowaniem włącz SSH, ustaw Wi-Fi oraz utwórz użytkownika.
+2. Podłącz się do Pi przez SSH:
+
+   ```bash
+   ssh <user>@<hostname>.local
+   ```
+
+3. Sklonuj repo i uruchom instalator jako zwykły użytkownik (nie `root`):
+
+   ```bash
+   git clone https://github.com/ManiekG/konsola_retro.git
+   cd konsola_retro
+   chmod +x install_retro.sh
+   ./install_retro.sh
+   ```
+
+   Skrypt instaluje zależności, kompiluje emulatory i zapisuje pełny log w
+   `~/retro_install.log`. Dla części platform trzeba później dodać własne,
+   legalnie pozyskane ROM-y oraz obrazy gier.
+
+4. Po zakończeniu uruchom ponownie urządzenie:
+
+   ```bash
+   sudo reboot
+   ```
+
+Pełną konfigurację, autologin i autostart opisuje [SETUP.md](SETUP.md), a
+rozwiązania typowych problemów — [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
 ## Sprzęt — platforma docelowa
 
 - **Raspberry Pi Zero 2W** (4× Cortex-A53 @1GHz, 512MB RAM, WiFi) —
